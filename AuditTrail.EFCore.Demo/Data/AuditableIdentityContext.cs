@@ -33,6 +33,13 @@ public abstract class AuditableIdentityContext : IdentityDbContext
             var auditEntry = new AuditEntry(entry);
             auditEntry.TableName = entry.Entity.GetType().Name;
             auditEntry.UserId = userId;
+            auditEntry.AuditType = entry.State switch
+            {
+                EntityState.Added => Enums.AuditType.Create,
+                EntityState.Modified => Enums.AuditType.Update,
+                EntityState.Deleted => Enums.AuditType.Delete,
+                _ => Enums.AuditType.None
+            };
             auditEntries.Add(auditEntry);
             foreach (var property in entry.Properties)
             {
@@ -46,12 +53,10 @@ public abstract class AuditableIdentityContext : IdentityDbContext
                 switch (entry.State)
                 {
                     case EntityState.Added:
-                        auditEntry.AuditType = Enums.AuditType.Create;
                         auditEntry.NewValues[propertyName] = property.CurrentValue;
                         break;
 
                     case EntityState.Deleted:
-                        auditEntry.AuditType = Enums.AuditType.Delete;
                         auditEntry.OldValues[propertyName] = property.OriginalValue;
                         break;
 
@@ -59,7 +64,6 @@ public abstract class AuditableIdentityContext : IdentityDbContext
                         if (property.IsModified)
                         {
                             auditEntry.ChangedColumns.Add(propertyName);
-                            auditEntry.AuditType = Enums.AuditType.Update;
                             auditEntry.OldValues[propertyName] = property.OriginalValue;
                             auditEntry.NewValues[propertyName] = property.CurrentValue;
                         }
